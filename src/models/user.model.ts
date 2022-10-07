@@ -8,6 +8,7 @@ interface IUser {
 	email: string;
 	password: string;
 	token: string;
+	isEmailVerified: boolean;
 }
 
 const userSchema = new Schema<IUser>({
@@ -32,6 +33,10 @@ const userSchema = new Schema<IUser>({
 	},
 	token: {
 		type: String,
+	},
+	isEmailVerified: {
+		type: Boolean,
+		default: false,
 	},
 });
 const User = model<IUser>('users', userSchema);
