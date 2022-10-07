@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import { connect } from './database/mongo';
+import { authMiddleware } from './middleware/auth.middleware';
 import { userRouter } from './routes/user.route';
 
 dotenv.config();
@@ -13,7 +14,7 @@ app.use(express.json());
 
 app.use('/api/auth', userRouter);
 
-app.get('/', (req, res) => {
+app.get('/', authMiddleware, (req, res) => {
 	res.json({ name: 'tonoy' });
 });
 

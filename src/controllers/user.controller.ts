@@ -1,9 +1,55 @@
-import { genSalt, hash } from 'bcrypt';
+import { compare, genSalt, hash } from 'bcrypt';
+
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import { User, userValidator } from '../models/user.model';
 import { decrypt, encrypt } from '../utils/confirmation.util';
+
+export async function login(req: Request, res: Response) {
+	try {
+		// Get user data
+		const { emailOrUsername, password } = req.body;
+
+		// Validate user data
+		if (!(emailOrUsername && password)) {
+			return res.status(400).send('All data is required');
+		}
+
+		// A regex expression to test if the given value is an email or username
+		let regexEmail = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+		const data = regexEmail.test(emailOrUsername)
+			? {
+					email: emailOrUsername,
+			  }
+			: {
+					username: emailOrUsername,
+			  };
+
+		// Validate if user exist in our database
+		const user = await User.findOne(data);
+
+		if (user && (await compare(password, user.password))) {
+			// Create token
+			const email = user.email;
+			const token = jwt.sign(
+				{ user_id: user._id, email },
+				process.env.TOKEN_SECRET_KEY as string,
+				{
+					expiresIn: '1h',
+				}
+			);
+			// save user token
+			user.token = token;
+			// user
+			return res.status(200).json(user);
+		}
+		return res.status(400).send('Invalid Credentials');
+	} catch (err) {
+		console.error(err);
+		return res.status(400).send((err as any).message);
+	}
+}
 
 export async function signUp(req: Request, res: Response) {
 	try {
@@ -47,6 +93,7 @@ export async function signUp(req: Request, res: Response) {
 		console.error(err);
 	}
 }
+
 export async function verifyEmail(req: Request, res: Response) {
 	try {
 		// Get the confirmation token
@@ -75,6 +122,7 @@ export async function verifyEmail(req: Request, res: Response) {
 		return res.status(400).send(err);
 	}
 }
+
 async function sendMail(email: string, username: string, res: Response) {
 	const confirmationToken = encrypt(username);
 	const apiUrl = process.env.API_URL as string;
@@ -98,6 +146,7 @@ async function sendMail(email: string, username: string, res: Response) {
 		}
 	});
 }
+
 function getTransport() {
 	const user = process.env.NODEMAILER_USER as string;
 	const pass = process.env.NODEMAILER_PASSWORD as string;
